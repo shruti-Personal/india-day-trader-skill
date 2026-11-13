@@ -29,7 +29,7 @@ Sources, one request each per ticker:
     price against yesterday's close:
     https://query2.finance.yahoo.com/v8/finance/chart/<TICKER>?range=1d&interval=5m
 
-Times print in IST (ET). State: trader/state/news.json remembers
+Times print in IST. State: trader/state/news.json remembers
 what you have seen (30 days), so an item shows once. Offline: --offline DIR
 reads yahoo-<TICKER>.xml, chart-<TICKER>.json, sec-<FORM>-<CIK>.xml and
 company_tickers.json from DIR. The tests use it.

@@ -274,7 +274,7 @@ def _f(x):
 
 
 def money(x):
-    return "$" + "{:,.2f}".format(float(x)).replace(".00", "")
+    return "₹" + "{:,.2f}".format(float(x)).replace(".00", "")
 
 
 def _cent(x):
@@ -440,7 +440,7 @@ def check(orders, cfg, portfolio=None, prices=None, state=None, today=None, now=
         if tif not in TIFS:
             reasons.append("format: unknown time_in_force %r" % tif)
         if notional is not None and (typ != "market" or tif != "day"):
-            reasons.append("format: a notional (dollar) order must be a market order with time_in_force day")
+            reasons.append("format: a notional (rupee) order must be a market order with time_in_force day")
         if typ in ("limit", "stop_limit") and o.get("limit_price") is None:
             reasons.append("format: a %s order needs a limit_price" % typ)
         if typ in ("stop", "stop_limit") and o.get("stop_price") is None:

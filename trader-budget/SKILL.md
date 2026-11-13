@@ -12,7 +12,7 @@ description: >-
   trade", "how much should I buy", "I have $5,000", "I only want to risk $50
   a trade", "set my rules", "keep 10% in cash", or after /trader-exit writes
   a plan.
-argument-hint: "[budget in dollars]"
+argument-hint: "[budget in rupees]"
 ---
 
 # trader-budget
@@ -92,7 +92,7 @@ the reason to the user in one line.
 
 ## Step 3: show the user
 
-Show the four limits, which one decided the size, the shares, the dollars
+Show the four limits, which one decided the size, the shares, the rupees
 and the max loss at the stop. Say plainly that a stop is an order, not a
 promise: in a fast market it can fill below the stop. Then hand over to
 `/trader-risk`.
@@ -132,7 +132,7 @@ the same plan sizes to 6 shares at 8.16 a share, and reward:risk falls to
 here) splits a budget across a list by weight: the cash buffer comes off the
 top, weights are renormalised to 100, any stock over `max_position_pct` is
 pinned at the cap and its excess shared out, slices under the minimum order
-are dropped, and amounts round to whole dollars so nothing is left idle by
+are dropped, and amounts round to whole rupees so nothing is left idle by
 accident. With `"max_position_pct": 25` and `"fractional": true`, the example
 file gives AAPL $1,250 (capped), AXP $1,119, GOOGL $823, KO $708, BAC $600.
 With `"fractional": false` (the example config) it buys whole shares and

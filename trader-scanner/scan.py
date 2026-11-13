@@ -605,7 +605,7 @@ def orb_window(now_utc, at, or_minutes, until, explicit_day=None):
     else:
         cutoff = now.replace(second=0, microsecond=0)
         if cutoff >= close_dt:
-            raise ScanError("The market closed at %s ET on %s. Replay the session with --at 10:15."
+            raise ScanError("The market closed at %s IST on %s. Replay the session with --at 10:15."
                             % (clock_label(close_dt), day_label(day)))
     if cutoff < first_close:
         raise ScanError("It is %s IST: the %d-minute opening range runs 9:15 to %s and the first bar after it "
@@ -921,7 +921,7 @@ def cmd_orb(a):
     failed = dict(failed or {})
     failed.update(failed2)
     nfailed = len([s for s in symbols if s in failed])
-    as_of = "%s %s ET" % (day.isoformat(), cutoff.strftime("%H:%M"))
+    as_of = "%s %s IST" % (day.isoformat(), cutoff.strftime("%H:%M"))
     doc = {"created_by": "trader-scanner", "created_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "mode": "orb",
            "as_of": as_of, "universe": len(symbols), "scanned": counts["scanned"], "failed": nfailed,
            "unconfirmed": counts["unconfirmed"], "source": "yahoo", "or_minutes": a.or_minutes,

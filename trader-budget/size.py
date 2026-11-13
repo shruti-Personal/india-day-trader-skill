@@ -43,9 +43,9 @@ list of stocks by weight.
                    anything over the cap is shared out to the others by
                    weight, again and again until nobody is over
   4. min order     a slice under min_order is dropped and its weight
-                   shared out, so you never place a $2 order
-  5. rounding      whole dollars by default (--cents for cents); the rounding
-                   dollar goes to the biggest position that is not capped
+                   shared out, so you never place a ₹2 order
+  5. rounding      whole rupees by default (--cents for paise); the rounding
+                   rupee goes to the biggest position that is not capped
   6. whole shares  with --whole-shares or "fractional": false; needs prices
 
 Money that cannot be invested is reported as "left idle", never hidden.
@@ -288,8 +288,8 @@ def _num(x):
 def money(x):
     x = float(x)
     if abs(x - round(x)) < 0.005:
-        return "$" + "{:,.0f}".format(round(x))
-    return "$" + "{:,.2f}".format(x)
+        return "₹" + "{:,.0f}".format(round(x))
+    return "₹" + "{:,.2f}".format(x)
 
 
 # ---------------------------------------------------------------- plan mode (the default)
@@ -643,10 +643,10 @@ def size(rows, cfg, budget=None, prices=None, whole=None, cents=False, top=None)
             break
         worst = min(small, key=lambda r: (r["source_weight"], r["ticker"]))
         if whole and shares is not None and shares[worst["ticker"]] == 0 and prices.get(worst["ticker"], 0) > 0:
-            reason = ("one share costs $%s, more than its slice; it cannot be bought in whole shares"
+            reason = ("one share costs ₹%s, more than its slice; it cannot be bought in whole shares"
                       % _num(prices[worst["ticker"]]))
         else:
-            reason = "its slice ($%s) is under your $%s minimum order" % (
+            reason = "its slice (₹%s) is under your ₹%s minimum order" % (
                 _num(dollars[worst["ticker"]]), _num(min_order))
         dropped.append({"ticker": worst["ticker"], "reason": reason})
         keep = [r for r in keep if r["ticker"] != worst["ticker"]]
@@ -705,7 +705,7 @@ def report(result, orders, source=""):
                     money(r["investable"]), _num(r["max_position_pct"]), money(r["cap"])))
     lines.append("")
     has_price = any("price" in p for p in r["positions"])
-    head = "%-7s %-22s %8s %11s" % ("ticker", "name", "weight", "dollars")
+    head = "%-7s %-22s %8s %11s" % ("ticker", "name", "weight", "amount")
     if has_price:
         head += " %10s %10s" % ("price", "shares")
     lines.append(head + "  note")
@@ -855,7 +855,7 @@ def main(argv=None):
     g.add_argument("--targets", help="a weights file: {\"weights\": [{\"ticker\", \"weight\"}]}")
     g.add_argument("--top", type=int, help="keep only the N biggest weights")
     g.add_argument("--whole-shares", action="store_true", help="whole shares only (needs --prices)")
-    g.add_argument("--cents", action="store_true", help="size to the cent instead of whole dollars")
+    g.add_argument("--cents", action="store_true", help="size to the paisa instead of whole rupees")
     a = ap.parse_args(argv)
     try:
         cfg = load_config(a.config)
