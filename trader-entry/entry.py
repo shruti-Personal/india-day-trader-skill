@@ -231,7 +231,7 @@ def next_open(d):
 # ---------------------------------------------------------------- Yahoo
 
 def yahoo_symbol(sym):
-    return sym.upper().replace(".", "-")
+    return sym.upper().strip().replace('.NS','').replace('.BO','') + '.NS'
 
 
 def chart_path(sym, rng, interval):

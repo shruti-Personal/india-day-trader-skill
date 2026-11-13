@@ -50,9 +50,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as _ET
 
-YAHOO = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%s&region=US&lang=en-US"
+YAHOO = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%s&region=IN&lang=en-IN"
 CHART = "https://%s.finance.yahoo.com/v8/finance/chart/%s?range=1d&interval=5m"
 SEC_FEED = ("https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=%s&type=%s"
             "&dateb=&owner=include&count=%d&output=atom")
@@ -95,7 +95,7 @@ class NewsError(Exception):
 # ---------------------------------------------------------------- time
 
 
-IST_OFFSET = datetime.timedelta(hours=5, minutes=30)
+IST_OFFSET = _dt.timedelta(hours=5, minutes=30)
 
 
 def to_ist(utc):
@@ -112,7 +112,7 @@ def ist_to_utc(local):
 
 def ts_to_ist(ts):
     """Unix seconds -> naive IST."""
-    return to_ist(datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(ts)))
+    return to_ist(_dt.datetime(1970, 1, 1) + _dt.timedelta(seconds=int(ts)))
 
 
 # ---------------------------------------------------------------- inputs
@@ -191,7 +191,7 @@ class Fetcher(object):
 
 
 def yahoo_symbol(ticker):
-    return ticker.upper().replace(".", "-")
+    return ticker.upper().strip().replace('.NS','').replace('.BO','') + '.NS'
 
 
 def cik_map(fetcher, state):
@@ -240,8 +240,8 @@ def parse_time(value):
 def parse_rss(data, ticker):
     """Yahoo headline RSS -> items."""
     try:
-        root = IST.fromstring(data)
-    except IST.ParseError as exc:
+        root = _ET.fromstring(data)
+    except _ET.ParseError as exc:
         raise NewsError("RSS for %s is not valid XML: %s" % (ticker, exc))
     out = []
     for it in root.iter("item"):
@@ -257,8 +257,8 @@ def parse_rss(data, ticker):
 def parse_sec_atom(data, ticker):
     """EDGAR company filings Atom -> items."""
     try:
-        root = IST.fromstring(data)
-    except IST.ParseError as exc:
+        root = _ET.fromstring(data)
+    except _ET.ParseError as exc:
         raise NewsError("SEC feed for %s is not valid XML: %s" % (ticker, exc))
     company = ""
     for el in root.iter():

@@ -42,7 +42,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as _ET
 import zipfile
 
 INDEX_URL = "https://disclosures-clerk.house.gov/public_disc/financial-pdfs/%d%s.zip"
@@ -65,7 +65,7 @@ class PtrError(Exception):
 
 # ---------------------------------------------------------------- the index
 
-IST_OFFSET = datetime.timedelta(hours=5, minutes=30)
+IST_OFFSET = _dt.timedelta(hours=5, minutes=30)
 
 
 def to_ist(utc):
@@ -82,7 +82,7 @@ def ist_to_utc(local):
 
 def ts_to_ist(ts):
     """Unix seconds -> naive IST."""
-    return to_ist(datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(ts)))
+    return to_ist(_dt.datetime(1970, 1, 1) + _dt.timedelta(seconds=int(ts)))
 
 
 def iso(mdy):
@@ -124,8 +124,8 @@ def read_index_bytes(data):
 def parse_index(xml_bytes, year):
     """Every filing in a <YEAR>FD.xml as a dict, newest first."""
     try:
-        root = IST.fromstring(xml_bytes)
-    except IST.ParseError as exc:
+        root = _ET.fromstring(xml_bytes)
+    except _ET.ParseError as exc:
         raise PtrError("index is not valid XML: %s" % exc)
     out = []
     for m in root.iter("Member"):

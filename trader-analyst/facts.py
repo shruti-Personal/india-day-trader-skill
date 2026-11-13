@@ -124,7 +124,7 @@ class Fetcher(object):
 
 # ---------------------------------------------------------------- facts
 
-IST_OFFSET = datetime.timedelta(hours=5, minutes=30)
+IST_OFFSET = _dt.timedelta(hours=5, minutes=30)
 
 
 def to_ist(utc):
@@ -141,7 +141,7 @@ def ist_to_utc(local):
 
 def ts_to_ist(ts):
     """Unix seconds -> naive IST."""
-    return to_ist(datetime.datetime(1970, 1, 1) + datetime.timedelta(seconds=int(ts)))
+    return to_ist(_dt.datetime(1970, 1, 1) + _dt.timedelta(seconds=int(ts)))
 
 
 def _date(s):
