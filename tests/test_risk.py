@@ -20,9 +20,9 @@ V1_TODAY = "2026-10-13"
 PRICES = {"AAPL": 341.27, "AXP": 309.84, "GOOGL": 353.78, "KO": 90.11, "BAC": 53.96}
 QUOTE_TIME = datetime.datetime(2026, 10, 19, 14, 52, 13)   # Yahoo's TSLA quote 366.475, 10:52:13 New York
 # v1's rules with every day-trade check switched off: the long-term checks still hold
-V1 = {"budget": 5000, "cash_buffer_pct": 10, "max_position_pct": 25, "max_order_usd": 2000, "min_order_usd": 5,
+V1 = {"budget": 5000, "cash_buffer_pct": 10, "max_position_pct": 25, "max_order": 2000, "min_order": 5,
       "max_orders_per_day": 10, "require_stop": False, "no_entries_before": None, "no_entries_after": None,
-      "max_trades_per_day": 0, "max_daily_loss_usd": 0, "max_loss_per_trade_usd": 0, "min_reward_risk": 0}
+      "max_trades_per_day": 0, "max_daily_loss": 0, "max_loss_per_trade": 0, "min_reward_risk": 0}
 
 
 def at(text):
@@ -310,7 +310,7 @@ class Exits(unittest.TestCase):
         full = {"orders": [placed("TSLA"), placed("AMD"), placed("NVDA")] +
                           [placed("T%d" % i, max_loss=1) for i in range(6)] +
                           [placed("TSLA", side="sell", kind="exit", max_loss=None)]}
-        c = cfg(blocked=["TSLA"], max_order_usd=100, max_daily_loss_usd=50)
+        c = cfg(blocked=["TSLA"], max_order=100, max_daily_loss=50)
         res = check.check([self.SELL], c, portfolio=self.PF, state=full, now=at("2026-10-19 15:58"))
         r = res["results"][0]
         self.assertEqual((r["verdict"], r["kind"]), ("PASS", "exit"), r["reasons"])

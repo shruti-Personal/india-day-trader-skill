@@ -63,10 +63,10 @@ DEFAULTS = {
     "budget": None,
     "cash_buffer_pct": 10,
     "max_position_pct": 75,
-    "max_order": 4000,
-    "min_order": 5,
-    "max_loss_per_trade": 50,
-    "max_daily_loss": 150,
+    "max_order": 80000,
+    "min_order": 100,
+    "max_loss_per_trade": 1000,
+    "max_daily_loss": 3000,
     "max_trades_per_day": 3,
     "max_orders_per_day": 10,
     "min_reward_risk": 1.0,
@@ -601,7 +601,7 @@ def size(rows, cfg, budget=None, prices=None, whole=None, cents=False, top=None)
         raise SizeError("no budget: pass --budget or set \"budget\" in trader/config.json")
     buf_pct = float(cfg.get("cash_buffer_pct", 10))
     cap_pct = float(cfg.get("max_position_pct", 25))
-    min_order = float(cfg.get("min_order", 5) or 0)
+    min_order = float(cfg.get("min_order", 100) or 0)
     if not 0 <= buf_pct < 100:
         raise SizeError("cash_buffer_pct must be between 0 and 100")
     if not 0 < cap_pct <= 100:
