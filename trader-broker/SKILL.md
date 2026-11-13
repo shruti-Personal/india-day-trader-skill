@@ -3,17 +3,17 @@ name: trader-broker
 description: >-
   Order Executor. Sends approved orders to your broker, paper trading by
   default, never without your yes. Shows each order as a plain ticket (a
-  bracket shows its stop-loss, take-profit and the max loss at the stop)
-  plus the exact JSON for Alpaca's place_stock_order, records your yes word
-  for word, then Claude's own Allow once / Deny card asks again. Builds the
-  sell ticket that closes a day trade by your flat-by time, records fills,
-  and logs each trade's max loss so trader-risk can hold the daily limit.
-  Covers setting up Alpaca's official MCP server in Claude Desktop (paper by
-  default, keys in env vars, never in chat), the Interactive Brokers
-  connector, and setting order tools to "Needs approval". Use when the user
-  says "place the order", "buy it", "execute", "send it to my broker",
-  "close my position", "flatten", "get me out", "connect Alpaca", "set up
-  paper trading", or after /trader-risk passes.
+  bracket shows its stop-loss, take-profit and the max loss at the stop),
+  records your yes word for word, and logs it. No Indian broker has a Claude
+  connector, so on NSE the ticket is what you type into your own terminal
+  (symbol, MIS, order type, validity, SL-M trigger) and Claude places
+  nothing. Builds the sell ticket that closes a day trade by your flat-by
+  time, records fills, and logs each trade's max loss so trader-risk can hold
+  the daily limit. Also covers the US connectors it can drive, Alpaca's MCP
+  server and Interactive Brokers, and setting order tools to "Needs
+  approval". Use when the user says "place the order", "buy it", "execute",
+  "send it to my broker", "close my position", "flatten", "get me out", "set
+  up paper trading", or after /trader-risk passes.
 argument-hint: "[order number]"
 ---
 
@@ -30,6 +30,14 @@ separate gates, every time, for every order:
 
 Two yeses from the user, one PASS from the rules. No yes, no order.
 
+**On NSE, Claude places nothing at all.** There is no Zerodha, Upstox, Angel
+One or Groww connector here, so gate 3 does not exist: the user places every
+order by hand in their own broker's terminal. `ticket.py` still renders the
+ticket, still demands the yes, and still keeps the log, because the log is
+what trader-risk counts the daily limit from. Treat a recorded yes as a
+decision, never as a placed order; only `ticket.py result --status placed`
+says it reached a broker, and only the user can say that.
+
 `${CLAUDE_SKILL_DIR}` below is this skill's folder (where this SKILL.md lives).
 
 ```bash
@@ -43,7 +51,7 @@ python3 "${CLAUDE_SKILL_DIR}/ticket.py" log
 
 `ticket.py` never talks to a broker. It renders tickets, checks that a reply
 is a real yes for that order, builds the flatten ticket, and keeps the log in
-`trader/state/broker.json`. `--now "2026-10-19 10:15"` pins the clock (New York time).
+`trader/state/broker.json`. `--now "2026-11-13 10:15"` pins the clock (IST).
 
 ## What it reads and writes
 
@@ -55,7 +63,45 @@ is a real yes for that order, builds the flatten ticket, and keeps the log in
 | `trader/portfolio.json` | cash and shares, updated by `fill` and by `result --filled-qty` |
 | `trader/plan.json` | the flat-by time for `flatten` |
 
+## Setup: Indian brokers (Zerodha, Upstox, Angel One, Groww, ...)
+
+There is nothing to set up, because there is nothing to connect. Claude has
+no connector for any Indian broker, so it cannot place, modify or cancel an
+order on NSE. Set `"broker": "zerodha"` (or whichever you use) in
+`trader/config.json` and `ticket.py` renders the ticket in the fields your
+terminal actually asks for:
+
+```
+symbol      INFY (NSE)
+side        BUY
+quantity    65
+product     MIS (intraday). CNC/delivery is a different trade and a different risk
+order type  market
+validity    good for today
+stop-loss   SL-M, trigger 1142.95
+target      limit 1155.05
+```
+
+You type that into Kite, Pro, or whatever you use. Then tell `ticket.py` what
+happened (`result`, then `fill`) so the log and the daily limit stay true.
+
+Two things to say out loud when a bracket is involved:
+
+- **Zerodha retired bracket orders in 2020.** The entry and the stop are two
+  separate orders there, and the stop is only live once the user places it.
+  Several other Indian brokers did the same; have the user confirm what
+  theirs supports rather than assuming a bracket exists.
+- **The stop goes on the moment the entry fills.** Between the fill and the
+  stop there is no protection at all. This is the single most dangerous gap
+  in hand-placed trading, and it does not exist on a connector broker.
+
+On MIS the broker also auto-squares-off near the close, at its own cutoff,
+not at your `flat_by`. Being flat before then is the user's job.
+
 ## Setup A: Alpaca (official MCP server, Claude Desktop)
+
+Only for US brokers. Skip this whole section on NSE.
+
 
 Alpaca's own server is github.com/alpacahq/alpaca-mcp-server (MIT). It runs on
 the user's computer inside Claude Desktop. It is not in Claude's connector
@@ -159,37 +205,55 @@ that draft orders to Needs approval too.
   (`alerts.py add --from-plan`). The bracket's own orders do the stopping.
 - When the stop-loss or the take-profit fills, record it:
   `ticket.py fill --symbol TSLA --side sell --qty 8 --price 358.32`.
-- By `flat_by` (15:55 New York), anything still open gets closed:
-  1. Ask Alpaca how many shares are held: `get_open_position` (read only).
-  2. `ticket.py flatten --symbol TSLA --qty 8` writes a market sell for those
-     shares to `trader/orders.json`.
+- By `flat_by` (15:25 IST), anything still open gets closed:
+  1. Find out how many shares are held: on NSE the user reads it off their
+     own terminal; on a connector broker, `get_open_position` (read only).
+  2. `ticket.py flatten --symbol INFY --qty 65` writes a market sell for
+     those shares to `trader/orders.json`.
   3. `/trader-risk`. A sell that only closes what the user holds is never
      blocked by the daily limits or the entry window.
   4. `ticket.py show`, then the user's yes for that one order, as above.
-  5. The bracket's stop-loss and take-profit still hold those shares, so
-     Alpaca rejects a new sell until they are canceled: `get_orders` (status
-     open, nested true) shows them; `cancel_order_by_id` each one (Needs
-     approval). Then `place_stock_order` with the ticket, then `result`.
+  5. Any stop-loss or target still open holds those shares. Cancel it first
+     or the sell is rejected, or worse, sells twice. On NSE the user cancels
+     it and places the sell themselves; on a connector broker, `get_orders`
+     (status open, nested true) then `cancel_order_by_id` each leg (Needs
+     approval), then `place_stock_order`, then `result`.
 
-## Example: the reel
+## Example: an NSE ticket (nothing is placed)
 
 ```
-ORDER 1 of 1, PAPER account, Alpaca
-  BUY 8 TSLA, market, good for today
-  stop-loss 358.32
-  take-profit 370.04
-  max loss about $46.88 if the stop fills at 358.32 (it can fill worse in a fast market)
-  why: opening-range breakout on TSLA: 8 shares, bound by your $50 max loss per trade (8 x 5.86 = $46.88 at the stop)
+ORDER 1 of 1, PAPER account, Zerodha
+  BUY 65 INFY, market, good for today
+  stop-loss 1142.95
+  take-profit 1155.05
+  max loss about 393.25 if the stop fills at 1142.95 (it can fill worse in a fast market)
+  why: opening-range breakout on INFY: 65 shares, bound by your position cap
   READY: trader-risk PASS, waiting for your yes
-  Claude will call place_stock_order with exactly:
-    {"symbol": "TSLA", "side": "buy", "qty": "8", "type": "market", "time_in_force": "day",
-     "order_class": "bracket", "take_profit_limit_price": "370.04", "stop_loss_stop_price": "358.32"}
+  Place this yourself in Zerodha, exactly as below. Nothing here reaches a broker.
+    symbol      INFY (NSE)
+    side        BUY
+    quantity    65
+    product     MIS (intraday). CNC/delivery is a different trade and a different risk
+    order type  market
+    validity    good for today
+    stop-loss   SL-M, trigger 1142.95
+    target      limit 1155.05
+  This is one entry plus two exits. Check whether Zerodha still offers a bracket order:
+  Zerodha retired bracket orders in 2020, so there the entry and the stop are two
+  separate orders and the stop is only live once you place it.
+  Reply "yes" to record your decision on this one order, or "no" to skip it.
+  Recording a yes places nothing: you still place it in Zerodha yourself.
 ```
 
-The user replies "yes". Claude records it, calls `place_stock_order`, and the
-card reads "Claude wants to use Place stock order" with that JSON and two
-buttons: Allow once, Deny. Allow once sends it to the paper account. The
-`why` and the plan stay in the file; they are never sent.
+The user replies "yes". `ticket.py approve` records it word for word, and
+that is where Claude's part ends: there is no card, no tool call, no order.
+The user places it in Kite and then runs `result` and `fill`.
+
+On a connector broker the same ticket ends with the exact
+`place_stock_order` JSON instead, the user replies "yes", and Claude's own
+card ("Claude wants to use Place stock order") asks a second time: Allow once
+sends it to the paper account, Deny stops it. The `why` and the plan stay in
+the file; they are never sent.
 
 ## What it never does
 

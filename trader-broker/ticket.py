@@ -4,8 +4,10 @@
 This tool never talks to a broker and never places anything. It does its
 work around the one moment that matters, your yes:
 
-  show      renders each proposed order as a plain-English ticket plus the
-            exact JSON Claude will send to Alpaca's place_stock_order tool.
+  show      renders each proposed order as a plain-English ticket. If the
+            configured broker has a Claude connector (Alpaca, IBKR), it also
+            shows the exact JSON Claude would send. No Indian broker has one,
+            so there the ticket is what you type into your own terminal.
             A bracket order shows its stop-loss, take-profit and the max loss
             at the stop. An order is READY only if trader-risk passed THIS
             exact order today (matched by fingerprint) and nobody has decided
@@ -41,10 +43,34 @@ import os
 import re
 import sys
 
-ALPACA_FIELDS = ("symbol", "side", "qty", "notional", "type", "time_in_force", "limit_price",
-                 "stop_price", "trail_price", "trail_percent", "extended_hours", "client_order_id",
-                 "order_class", "take_profit_limit_price", "stop_loss_stop_price",
-                 "stop_loss_limit_price", "advanced_instructions")
+ORDER_FIELDS = ("symbol", "side", "qty", "notional", "type", "time_in_force", "limit_price",
+                "stop_price", "trail_price", "trail_percent", "extended_hours", "client_order_id",
+                "order_class", "take_profit_limit_price", "stop_loss_stop_price",
+                "stop_loss_limit_price", "advanced_instructions")
+
+# The only brokers Claude can actually send an order to, through a connector.
+# Every other broker is placed by hand: the ticket is still rendered and your
+# yes is still recorded, but Claude cannot place it. No Indian broker has a
+# connector here, so the India pack is hand-placed end to end.
+CONNECTOR_BROKERS = {
+    "alpaca": {"name": "Alpaca", "tool": "place_stock_order"},
+    "ibkr": {"name": "Interactive Brokers", "tool": None},
+}
+BROKER_NAMES = {
+    "zerodha": "Zerodha", "upstox": "Upstox", "angelone": "Angel One", "groww": "Groww",
+    "dhan": "Dhan", "fyers": "Fyers", "5paisa": "5paisa", "icicidirect": "ICICI Direct",
+    "kotak": "Kotak Neo", "hdfcsky": "HDFC Sky", "paytmmoney": "Paytm Money",
+    "sbisecurities": "SBI Securities", "motilaloswal": "Motilal Oswal",
+}
+
+
+def broker_of(cfg):
+    """(key, display name, connector or None)."""
+    key = str(cfg.get("broker", "zerodha") or "").lower()
+    conn = CONNECTOR_BROKERS.get(key)
+    if conn:
+        return key, conn["name"], conn
+    return key, BROKER_NAMES.get(key) or (key.title() if key else "your broker"), None
 STRING_FIELDS = ("qty", "notional", "limit_price", "stop_price", "trail_price", "trail_percent",
                  "take_profit_limit_price", "stop_loss_stop_price", "stop_loss_limit_price")
 TIF_WORDS = {"day": "good for today", "gtc": "good until canceled", "opg": "at the open",
@@ -96,10 +122,10 @@ def parse_now(text):
     return (dt - dt.utcoffset()).replace(tzinfo=None)
 
 
-def ny_iso(now_utc):
-    """naive UTC -> "2026-10-19T10:15:00-04:00" (IST wall clock with its offset)."""
-    off = eastern_offset(now_utc)
-    return "%s%+03d:00" % (to_ist(now_utc).replace(microsecond=0).isoformat(), off)
+def ist_iso(now_utc):
+    """naive UTC -> "2026-11-13T10:15:00+05:30" (IST wall clock with its offset).
+    IST is a fixed +5:30 all year: India has no daylight saving."""
+    return to_ist(now_utc).replace(microsecond=0).isoformat() + "+05:30"
 
 
 # ---------------------------------------------------------------- files
@@ -136,7 +162,7 @@ def rec_day(rec):
 
 def fingerprint(order):
     """Same function as trader-risk/check.py: identifies the exact order."""
-    core = {k: order[k] for k in ALPACA_FIELDS if k in order and order[k] is not None}
+    core = {k: order[k] for k in ORDER_FIELDS if k in order and order[k] is not None}
     blob = json.dumps(core, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
@@ -158,11 +184,11 @@ def _f(x):
 
 
 def tool_input(order):
-    """The exact arguments for place_stock_order: Alpaca's parameter names,
-    numbers as strings (its signature types qty, notional and prices as str).
-    "why" and "plan" are ours and are never sent."""
+    """The exact arguments for place_stock_order: the connector's parameter
+    names, numbers as strings (its signature types qty, notional and prices as
+    str). "why" and "plan" are ours and are never sent."""
     out = {}
-    for k in ALPACA_FIELDS:
+    for k in ORDER_FIELDS:
         if k in order and order[k] is not None:
             out[k] = _str_num(order[k]) if k in STRING_FIELDS else order[k]
     return out
@@ -238,6 +264,46 @@ def plain_parts(order):
     else:
         how = "%s order" % typ.replace("_", " ")
     return ["%s %s, %s, %s" % (side, what, how, tif)]
+
+
+def manual_parts(order):
+    """The order the way a broker's own order window asks for it, for a broker
+    Claude cannot place through. Indian terminals ask for product, order type,
+    validity and a trigger price."""
+    out = ["symbol      %s (NSE)" % order.get("symbol", "?"),
+           "side        %s" % str(order.get("side", "")).upper()]
+    if order.get("qty") is not None:
+        out.append("quantity    %s" % _str_num(order.get("qty")))
+    out.append("product     MIS (intraday). CNC/delivery is a different trade and a different risk")
+    typ = str(order.get("type", "market")).replace("_", " ")
+    if order.get("limit_price") is not None:
+        out.append("order type  %s at %s" % (typ, _p(order["limit_price"])))
+    else:
+        out.append("order type  %s" % typ)
+    out.append("validity    %s" % TIF_WORDS.get(str(order.get("time_in_force", "day")), "good for today"))
+    if order.get("stop_loss_stop_price") is not None:
+        leg = "stop-loss   SL-M, trigger %s" % _p(order["stop_loss_stop_price"])
+        if order.get("stop_loss_limit_price") is not None:
+            leg = "stop-loss   SL, trigger %s, limit %s" % (_p(order["stop_loss_stop_price"]),
+                                                            _p(order["stop_loss_limit_price"]))
+        out.append(leg)
+    if order.get("take_profit_limit_price") is not None:
+        out.append("target      limit %s" % _p(order["take_profit_limit_price"]))
+    return out
+
+
+def manual_steps(order, name):
+    """What the user has to do themselves, in order, for a hand-placed broker."""
+    out = []
+    if is_bracket(order):
+        out.append("This is one entry plus two exits. Check whether %s still offers a bracket order:"
+                   % name)
+        out.append("Zerodha retired bracket orders in 2020, so there the entry and the stop are two")
+        out.append("separate orders and the stop is only live once you place it.")
+        out.append("Place the stop the moment the entry fills. An entry with no stop is the one")
+        out.append("mistake this whole pack exists to prevent.")
+    out.append("Then record what happened: ticket.py result, and ticket.py fill once it fills.")
+    return out
 
 
 def plain(order):
@@ -343,10 +409,10 @@ def kind_of(order, rv):
 
 def render(order, idx, total, cfg, risk, state, today):
     ready, label, rv = status_of(order, risk, state, today)
-    broker = str(cfg.get("broker", "alpaca")).lower()
+    broker, name, conn = broker_of(cfg)
     paper = cfg.get("paper", True)
     acct = "PAPER account" if paper else "LIVE ACCOUNT, REAL MONEY"
-    lines = ["ORDER %d of %d, %s, %s" % (idx, total, acct, "Interactive Brokers" if broker == "ibkr" else "Alpaca")]
+    lines = ["ORDER %d of %d, %s, %s" % (idx, total, acct, name)]
     for part in plain_parts(order):
         lines.append("  " + part)
     if order.get("why"):
@@ -357,28 +423,46 @@ def render(order, idx, total, cfg, risk, state, today):
     if broker == "ibkr":
         lines.append("  Claude drafts this with the Interactive Brokers connector. IBKR sends it to your")
         lines.append("  IBKR account, and it only goes to the market after you approve it there.")
-    else:
-        lines.append("  Claude will call place_stock_order with exactly:")
+    elif conn:
+        lines.append("  Claude will call %s with exactly:" % conn["tool"])
         for l in json.dumps(tool_input(order), indent=2).splitlines():
             lines.append("    " + l)
         if is_bracket(order):
-            lines.append("  Alpaca places the entry, then the stop-loss and the take-profit as two orders")
+            lines.append("  %s places the entry, then the stop-loss and the take-profit as two orders"
+                         % name)
             lines.append("  that cancel each other: when one fills, the other is canceled.")
+    else:
+        lines.append("  Place this yourself in %s, exactly as below. Nothing here reaches a broker." % name)
+        for l in manual_parts(order):
+            lines.append("    " + l)
+        for l in manual_steps(order, name):
+            lines.append("  " + l)
     if ready:
-        lines.append("  Reply \"yes\" to place this one order, or \"no\" to skip it.")
-        if broker != "ibkr":
-            lines.append("  Claude's own card then asks again: Allow once places it, Deny stops it.")
+        if conn or broker == "ibkr":
+            lines.append("  Reply \"yes\" to place this one order, or \"no\" to skip it.")
+            if broker != "ibkr":
+                lines.append("  Claude's own card then asks again: Allow once places it, Deny stops it.")
+        else:
+            lines.append("  Reply \"yes\" to record your decision on this one order, or \"no\" to skip it.")
+            lines.append("  Recording a yes places nothing: you still place it in %s yourself." % name)
     return "\n".join(lines), ready
 
 
 def ticket_json(order, idx, cfg, risk, state, today):
     ready, label, rv = status_of(order, risk, state, today)
     loss, stop = max_loss(order)
-    return {"index": idx, "ready": ready, "status": label, "plain": plain(order),
-            "fingerprint": fingerprint(order), "paper": bool(cfg.get("paper", True)),
-            "broker": cfg.get("broker", "alpaca"), "tool": "place_stock_order",
-            "tool_input": tool_input(order), "why": order.get("why", ""),
-            "bracket": is_bracket(order), "max_loss": loss, "stop": stop}
+    key, name, conn = broker_of(cfg)
+    out = {"index": idx, "ready": ready, "status": label, "plain": plain(order),
+           "fingerprint": fingerprint(order), "paper": bool(cfg.get("paper", True)),
+           "broker": key, "broker_name": name, "placed_by": "claude" if conn or key == "ibkr" else "you",
+           "why": order.get("why", ""), "bracket": is_bracket(order),
+           "max_loss": loss, "stop": stop}
+    if conn and conn["tool"]:
+        out["tool"] = conn["tool"]
+        out["tool_input"] = tool_input(order)
+    else:
+        out["manual"] = manual_parts(order)
+    return out
 
 
 # ---------------------------------------------------------------- fills -> portfolio
@@ -435,7 +519,7 @@ def log_fill(state_path, now, today, symbol, side, qty, price):
     """A fill in the log, so trader-risk can count day trades (a buy and a sell the same day)."""
     state = load_state(state_path)
     state.setdefault("orders", []).append({
-        "at": ny_iso(now), "date": today, "status": "filled", "symbol": symbol.upper(), "side": side,
+        "at": ist_iso(now), "date": today, "status": "filled", "symbol": symbol.upper(), "side": side,
         "qty": _str_num(float(qty)), "price": float(price),
         "plain": "%s %s %s at %s" % (side.upper(), _str_num(float(qty)), symbol.upper(), _p(price))})
     write_json(state_path, state)
@@ -500,28 +584,37 @@ def cmd_approve(a):
         print("Not recorded: %s. Ask the user again with the ticket for order %d." % (why, a.index))
         return 1
     loss, stop = max_loss(order)
-    rec = {"at": ny_iso(now), "date": today, "index": a.index, "fingerprint": fingerprint(order),
+    rec = {"at": ist_iso(now), "date": today, "index": a.index, "fingerprint": fingerprint(order),
            "symbol": str(order.get("symbol", "")).upper(), "side": order.get("side"),
            "qty": order.get("qty"), "kind": kind_of(order, rv), "max_loss": loss, "stop": stop,
            "plain": plain(order), "status": "approved", "reply": a.reply,
-           "paper": bool(cfg.get("paper", True)), "broker": cfg.get("broker", "alpaca")}
+           "paper": bool(cfg.get("paper", True)), "broker": broker_of(cfg)[0]}
     state.setdefault("orders", []).append(rec)
     write_json(a.state, state)
     print("Recorded your yes for order %d: %s." % (a.index, plain(order)))
-    if str(cfg.get("broker", "alpaca")).lower() == "ibkr":
+    key, name, conn = broker_of(cfg)
+    if key == "ibkr":
         print("Now draft it with the Interactive Brokers connector; approve it in your IBKR account.")
-    else:
-        print("Now call place_stock_order with exactly:")
+    elif conn:
+        print("Now call %s with exactly:" % conn["tool"])
         print(json.dumps(tool_input(order), indent=2))
         print("Claude's card shows Allow once / Deny. Then: ticket.py result --index %d --status "
               "placed|denied|failed" % a.index)
+    else:
+        print("Nothing has been placed: Claude has no %s connector. Place it yourself in %s:"
+              % (name, name))
+        for l in manual_parts(order):
+            print("  " + l)
+        for l in manual_steps(order, name):
+            print(l)
+        print("Then: ticket.py result --index %d --status placed|denied|failed" % a.index)
     return 0
 
 
 def cmd_decline(a):
     orders, cfg, risk, state, today, now = _load(a)
     order = _pick(orders, a.index)
-    rec = {"at": ny_iso(now), "date": today, "index": a.index, "fingerprint": fingerprint(order),
+    rec = {"at": ist_iso(now), "date": today, "index": a.index, "fingerprint": fingerprint(order),
            "symbol": str(order.get("symbol", "")).upper(), "side": order.get("side"),
            "plain": plain(order), "status": "declined", "reply": a.reply or "no"}
     state.setdefault("orders", []).append(rec)
@@ -537,7 +630,7 @@ def cmd_result(a):
     rec = latest(state, fp, today)
     if not rec or rec.get("status") != "approved":
         raise TicketError("order %d has no yes recorded today; a result can only follow an approval" % a.index)
-    new = {"at": ny_iso(now), "date": today, "index": a.index, "fingerprint": fp, "symbol": rec["symbol"],
+    new = {"at": ist_iso(now), "date": today, "index": a.index, "fingerprint": fp, "symbol": rec["symbol"],
            "side": rec["side"], "plain": rec["plain"], "status": a.status}
     for k in ("qty", "kind", "max_loss", "stop"):
         if rec.get(k) is not None:
@@ -608,15 +701,22 @@ def cmd_flatten(a):
     print("Flatten %s: %s (flat by %s IST)." % (sym, plain(order), flat_by))
     print("Wrote it to %s%s." % (a.orders, (" (it replaced %d earlier proposal%s)"
                                              % (replaced, "" if replaced == 1 else "s")) if replaced else ""))
+    key, name, conn = broker_of(cfg)
     if a.qty is None:
-        print("The qty comes from %s. Check it against get_open_position %s before you say yes." % (source, sym))
+        print("The qty comes from %s. Check it against your open position in %s before you say yes."
+              % (source, name))
     print("Next:")
     print("  1. trader-risk: check.py. A sell that only closes what you hold is never blocked by the daily")
     print("     limits or the entry window.")
     print("  2. ticket.py show, then the user's yes for this one order.")
-    print("  3. If the bracket's stop-loss and take-profit are still open, Alpaca holds these shares for them")
-    print("     and rejects a new sell. Cancel them first: get_orders (status open, nested true), then")
-    print("     cancel_order_by_id for each open leg (Needs approval). Then place_stock_order with the ticket.")
+    if conn and conn["tool"]:
+        print("  3. If the bracket's stop-loss and take-profit are still open, %s holds these shares for" % name)
+        print("     them and rejects a new sell. Cancel them first: get_orders (status open, nested true),")
+        print("     then cancel_order_by_id for each open leg (Needs approval). Then %s." % conn["tool"])
+    else:
+        print("  3. Cancel any stop-loss or target still open on %s first: it holds these shares and the" % sym)
+        print("     sell will be rejected or, worse, sell twice. Then place the sell yourself in %s." % name)
+        print("     On MIS your broker also auto-squares-off near the close, at its time, not yours.")
     return 0
 
 
