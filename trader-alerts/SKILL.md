@@ -4,10 +4,10 @@ description: >-
   Price Alerts. Rings when a price, a stop or the opening bell hits. Turns
   the trade plan into three alerts in one go (the stop, the target and "flat
   by close" at your flat-by time), plus above / below / stop / target levels,
-  percent moves from the previous close, any time of day, and the NYSE
-  opening bell, each ringing once so you are not spammed. Knows NYSE hours
-  with the 2026 and 2027 holidays and 1:00 p.m. early closes, works out New
-  York time itself, fetches free delayed quotes (Yahoo chart JSON, Stooq
+  percent moves from the previous close, any time of day, and the NSE
+  opening bell, each ringing once so you are not spammed. Knows NSE hours
+  with the 2026 trading holidays (NSE has no early closes), works out IST
+  itself, fetches free delayed quotes (Yahoo chart JSON, Stooq
   CSV) one ticker at a time, and writes trader/prices.json for sizing and the
   risk check. Use when the user says "alert me when", "tell me if TSLA hits",
   "watch my stop", "watch my trade", "remind me to close by 3:55", "is the
@@ -85,21 +85,27 @@ close, so "flat by close" at 15:55 rings at 12:55 on those days.
   `get_stock_snapshot`, IBKR `get_price_snapshot`) and write it into
   `trader/prices.json` as `{"as_of": "...Z", "prices": {"TSLA": 366.48}}`.
 
-## The NYSE clock
+## The NSE clock
 
-Regular session 9:30 a.m. to 4:00 p.m. New York time, closed on weekends and
-on these holidays, from nyse.com/markets/hours-calendars (read 2026-10-13):
+Regular session 9:15 a.m. to 3:30 p.m. IST, closed on weekends and on these
+2026 holidays, from NSE's published calendar (read 2026-11-13):
 
-- 2026: Jan 1, Jan 19, Feb 16, Apr 3 (Good Friday), May 25, Jun 19, Jul 3
-  (Independence Day observed), Sep 7, Nov 26, Dec 25. Early close 1:00 p.m. on
-  Nov 27 and Dec 24.
-- 2027: Jan 1, Jan 18, Feb 15, Mar 26 (Good Friday), May 31, Jun 18
-  (Juneteenth observed), Jul 5 (Independence Day observed), Sep 6, Nov 25,
-  Dec 24 (Christmas observed). Early close 1:00 p.m. on Nov 26.
+- Jan 15 (Maharashtra municipal elections, added by a later NSE circular),
+  Jan 26 (Republic Day), Mar 3 (Holi), Mar 26 (Shri Ram Navami), Mar 31 (Shri
+  Mahavir Jayanti), Apr 3 (Good Friday), Apr 14 (Dr. Baba Saheb Ambedkar
+  Jayanti), May 1 (Maharashtra Day), May 28 (Bakri Id), Jun 26 (Muharram),
+  Sep 14 (Ganesh Chaturthi), Oct 2 (Mahatma Gandhi Jayanti), Oct 20
+  (Dussehra), Nov 10 (Diwali Balipratipada), Nov 24 (Prakash Gurpurb Sri Guru
+  Nanak Dev), Dec 25 (Christmas).
+- Mahashivratri (Feb 15), Id-Ul-Fitr (Mar 21), Independence Day (Aug 15) and
+  Diwali Laxmi Pujan (Nov 8) fall on a weekend in 2026. NSE ran its Muhurat
+  session on Sun Nov 8; this pack does not trade it.
+- NSE has no early closes: every trading day runs the full session.
 
-Daylight saving time is worked out in the tool, so it needs no time zone
-files and ignores the computer's own zone. For any other year it says the
-holiday list is unknown.
+IST is a fixed UTC+5:30 with no daylight saving, so the tool needs no time
+zone files and ignores the computer's own zone. NSE had not published the
+2027 calendar as of 2026-11-13, so for any year but 2026 the tool says the
+holiday list is unknown rather than guessing.
 
 ## Steps
 

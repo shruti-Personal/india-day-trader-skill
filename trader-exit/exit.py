@@ -61,44 +61,30 @@ CENT = Decimal("0.01")
 EPOCH = datetime.datetime(1970, 1, 1)
 NOTE = "A stop is a plan, not a guarantee: a gap or a fast market can fill past it."
 
+# NSE trading holidays, Capital Market segment. Source: NSE's published 2026
+# holiday list, plus the later NSE/CMTR circular that made 15 Jan a full
+# trading holiday for the Maharashtra municipal elections. Read 2026-11-13.
+# Weekday closures only: Mahashivratri (15 Feb), Id-Ul-Fitr (21 Mar),
+# Independence Day (15 Aug) and Diwali Laxmi Pujan (8 Nov) all fall on a
+# weekend in 2026, and the weekday check already closes those. NSE ran its
+# Muhurat session on Sun 8 Nov; this pack does not trade it.
 NSE_HOLIDAYS = {
+    "2026-01-15": "Municipal Corporation Election (Maharashtra)",
     "2026-01-26": "Republic Day",
-    "2026-03-10": "Holi",
-    "2026-03-31": "Id-Ul-Fitr",
-    "2026-04-02": "Ram Navami",
+    "2026-03-03": "Holi",
+    "2026-03-26": "Shri Ram Navami",
+    "2026-03-31": "Shri Mahavir Jayanti",
     "2026-04-03": "Good Friday",
-    "2026-04-14": "Dr. Ambedkar Jayanti",
+    "2026-04-14": "Dr. Baba Saheb Ambedkar Jayanti",
     "2026-05-01": "Maharashtra Day",
-    "2026-05-25": "Buddha Purnima",
-    "2026-06-07": "Id-Ul-Adha",
-    "2026-07-07": "Muharram",
-    "2026-08-15": "Independence Day",
-    "2026-08-16": "Parsi New Year",
-    "2026-09-05": "Milad-Un-Nabi",
+    "2026-05-28": "Bakri Id",
+    "2026-06-26": "Muharram",
+    "2026-09-14": "Ganesh Chaturthi",
     "2026-10-02": "Mahatma Gandhi Jayanti",
-    "2026-10-21": "Dussehra",
-    "2026-11-09": "Diwali Laxmi Pujan",
+    "2026-10-20": "Dussehra",
     "2026-11-10": "Diwali Balipratipada",
-    "2026-11-27": "Guru Nanak Jayanti",
+    "2026-11-24": "Prakash Gurpurb Sri Guru Nanak Dev",
     "2026-12-25": "Christmas",
-    "2027-01-26": "Republic Day",
-    "2027-03-01": "Holi",
-    "2027-03-22": "Id-Ul-Fitr",
-    "2027-03-26": "Good Friday",
-    "2027-03-30": "Ram Navami",
-    "2027-04-14": "Dr. Ambedkar Jayanti",
-    "2027-05-01": "Maharashtra Day",
-    "2027-05-14": "Buddha Purnima",
-    "2027-05-28": "Id-Ul-Adha",
-    "2027-06-26": "Muharram",
-    "2027-08-15": "Independence Day",
-    "2027-08-25": "Milad-Un-Nabi",
-    "2027-10-02": "Mahatma Gandhi Jayanti",
-    "2027-10-08": "Dussehra",
-    "2027-10-29": "Diwali Laxmi Pujan",
-    "2027-10-30": "Diwali Balipratipada",
-    "2027-11-17": "Guru Nanak Jayanti",
-    "2027-12-25": "Christmas",
 }
 OPEN = datetime.time(9, 15)
 CLOSE = datetime.time(15, 30)

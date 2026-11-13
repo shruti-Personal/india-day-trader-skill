@@ -87,9 +87,9 @@ How the numbers work:
   used, and it says so.
 - **Daily loss** counts the full max loss of every entry placed today, win or
   lose, as trader-broker logged it. Three full-size trades use up a $150 day.
-- **The window** is New York time, worked out in the tool (daylight saving
-  included), never from the computer's clock zone. Weekends and NYSE holidays
-  are closed. On a 1:00 p.m. early close the window ends 3 hours earlier too.
+- **The window** is IST, worked out in the tool (a fixed UTC+5:30, no daylight
+  saving), never from the computer's clock zone. Weekends and NSE holidays
+  are closed. NSE has no early closes, so the window never shifts.
   Set both `no_entries_*` to null to switch the window off.
 - **pdt_guard** (off by default) counts a day trade as a symbol bought and
   sold on the same day in the log, plus any entry placed today (it is meant

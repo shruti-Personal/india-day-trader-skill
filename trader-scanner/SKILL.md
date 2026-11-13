@@ -138,7 +138,8 @@ so the session is 9:15 to 15:30 every trading day.
   or 5xx, one retry after a 5-second wait on a 429.
 - Partial results are said as partial: "Fetched 4,980 of 5,259 charts (279
   failed or had no data)". Never round a partial scan up to "the whole market".
-- NYSE holidays and early closes for 2026 and 2027 (nyse.com, read 2026-10-13).
+- NSE trading holidays for 2026, from NSE's published calendar (read
+  2026-11-13). NSE has no early closes. The 2027 calendar was not out yet.
 
 ## Steps
 

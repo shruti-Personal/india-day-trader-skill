@@ -70,7 +70,7 @@ news / analyst                                                                (o
 | No entries before | 09:20 IST |
 | No entries after | 15:15 IST |
 | Flat by | 15:25 IST |
-| Holiday calendar | NSE holidays 2026–2027 |
+| Holiday calendar | NSE holidays 2026 (2027 not published yet) |
 
 ## Fine print
 

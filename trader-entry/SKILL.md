@@ -70,8 +70,8 @@ day bar by bar without waiting.
 - **Time limits.** No entries before 9:45 or after 15:30 (config). On a 1:00
   p.m. early close the cutoff moves up with the close, to 12:30.
 - **What it says.** Waiting (and how far the last close is from the level),
-  triggered, expired, or no data. Before 9:30: not open yet. Before 9:45: the
-  range is still forming. Weekends and NYSE holidays: the market is closed.
+  triggered, expired, or no data. Before 9:15: not open yet. Before 9:30: the
+  range is still forming. Weekends and NSE holidays: the market is closed.
 
 ## Steps
 
