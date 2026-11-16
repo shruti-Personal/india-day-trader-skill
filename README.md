@@ -34,6 +34,35 @@ cp -r india-day-trader-skill/trader-* ~/.claude/skills/
 
 The tools need Python 3.8 or newer. Nothing to pip install.
 
+## Set your limits first
+
+**Do this before the first trade.** Every tool reads `trader/config.json`,
+relative to whatever folder you run Claude in. With no budget set, sizing and
+the risk check refuse to run at all, which is the point. The other limits are
+the quiet ones: leave them out and you silently get ₹1,000 a trade and ₹3,000
+a day, whatever your budget says.
+
+```bash
+mkdir -p trader
+cp ~/.claude/skills/trader-budget/config.example.json trader/config.json
+```
+
+Then open `trader/config.json` and set at least these four:
+
+| key | what it means |
+| --- | --- |
+| `budget` | the money this account trades with, in rupees. Everything is sized off it |
+| `max_loss_per_trade` | the most one trade may lose at its stop. Caps position size |
+| `max_daily_loss` | trading stops for the day once losses reach this |
+| `broker` | `zerodha`, `upstox`, `angelone`, `groww`, `dhan`, `fyers`, `5paisa`, `icicidirect`, `kotak`, `hdfcsky`, `paytmmoney`, `sbisecurities` or `motilaloswal`. Only names the ticket, since no Indian broker connects to Claude |
+
+The shipped values (₹1,00,000 budget, ₹1,000 a trade, ₹3,000 a day) are an
+example, not a recommendation. `"paper": true` stays until you change it.
+
+To check it is being read, run `/trader-risk` and look at the limits it
+prints back. If they are not your numbers, Claude is not running in the
+folder that holds `trader/`.
+
 ## The eleven
 
 | command | job | what it does |
