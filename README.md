@@ -2,6 +2,11 @@
 
 11 Claude skills for day trading Indian stocks (NSE): scan thousands of charts, track breaking news, time every entry and exit, and replay every outcome before you risk a rupee.
 
+Nine of the eleven work on NSE. Two do not: `/trader-analyst` and
+`/trader-pelosi` read US filings (SEC EDGAR and the US House Clerk) and have
+no Indian equivalent, so they are left as they came. They are useful only if
+you also follow US stocks.
+
 Free, MIT, no signup, no API key. The tools are plain Python that read free
 public data: Yahoo Finance charts (with .NS suffix for NSE stocks) and NSE's
 equity lists.
@@ -42,8 +47,8 @@ The tools need Python 3.8 or newer. Nothing to pip install.
 | `/trader-budget` | Budget Manager | Sizes every position to your budget and your max loss per trade. |
 | `/trader-broker` | Order Executor | Sends approved orders to your broker, paper trading by default, never without your yes. |
 | `/trader-alerts` | Price Alerts | Rings when a price, a stop or the opening bell hits. |
-| `/trader-analyst` | Earnings Analyst | Reads earnings data and sums up what changed. |
-| `/trader-pelosi` | Insider Tracker | Tracks insider trading disclosures from NSE/BSE. |
+| `/trader-analyst` | Earnings Analyst | **US only.** Reads a company's reported numbers from SEC EDGAR and sums up what changed. No Indian filings: an NSE ticker returns nothing. |
+| `/trader-pelosi` | Insider Tracker | **US only.** Reads the US House Clerk's STOCK Act disclosures (what members of Congress traded). Nothing to do with NSE/BSE or SEBI insider filings. |
 
 ## How to use it
 
@@ -53,7 +58,7 @@ what the last one wrote:
 ```
 scanner -> news -> entry -> exit -> timemachine -> budget -> risk -> broker   (one trade)
 alerts: stop, target, flat by the close                                       (while it is open)
-news / analyst                                                                (on a schedule)
+news                                                                          (on a schedule)
 ```
 
 ## India-specific defaults
